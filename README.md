@@ -3,7 +3,7 @@
 ### [Gatling Academy. Module 3 - Load Test a RESTful API - Java](https://academy.gatling.io/courses/take/module-3-load-test-a-restful-api-java)
 
 Web-site: [demostore.gatling.io](http://demostore.gatling.io/)
-
+Swagger: [demostore](http://demostore.gatling.io/swagger-ui/index.html#)
 ### Prerequisites
 To run the application you need :
 + Java 11
