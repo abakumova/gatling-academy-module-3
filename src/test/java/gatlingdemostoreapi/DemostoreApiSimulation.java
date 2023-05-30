@@ -20,20 +20,20 @@ public class DemostoreApiSimulation extends Simulation {
     .acceptEncodingHeader("gzip, deflate")
     .acceptLanguageHeader("en-GB,en;q=0.9,ru-UA;q=0.8,ru;q=0.7,uk-UA;q=0.6,uk;q=0.5,ru-RU;q=0.4,en-US;q=0.3,tr;q=0.2")
     .userAgentHeader("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36");
-  
+
   private Map<CharSequence, String> headers_0 = Map.of("accept", "application/json");
-  
+
   private Map<CharSequence, String> headers_3 = Map.ofEntries(
     Map.entry("Content-Type", "application/json"),
     Map.entry("Origin", "http://demostore.gatling.io"),
     Map.entry("accept", "application/json")
   );
-  
+
   private Map<CharSequence, String> headers_4 = Map.ofEntries(
     Map.entry("Content-Type", "application/json"),
     Map.entry("Origin", "http://demostore.gatling.io"),
     Map.entry("accept", "application/json"),
-    Map.entry("authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTY4NTIxMjk0NiwiZXhwIjoxNjg1MjE2NTQ2fQ.n3dNbixe4GXuw4WVJ4v5CW9G9zi1nA0rS8JcIN7F6bg")
+    Map.entry("authorization", "Bearer #{jwt}")
   );
 
   private ScenarioBuilder scn = scenario("DemostoreApiSimulation")
@@ -59,6 +59,7 @@ public class DemostoreApiSimulation extends Simulation {
         .post("/api/authenticate")
         .headers(headers_3)
         .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/0003_request.json"))
+        .check(jsonPath("$.token").saveAs("jwt"))
     )
     .pause(73)
     .exec(
