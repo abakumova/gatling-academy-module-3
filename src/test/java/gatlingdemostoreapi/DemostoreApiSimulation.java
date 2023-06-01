@@ -16,7 +16,7 @@ public class DemostoreApiSimulation extends Simulation {
     .contentTypeHeader("application/json")
     .acceptHeader("application/json");
 
-  private Map<CharSequence, String> authorizationHeaders = Map.ofEntries(
+  private static Map<CharSequence, String> authorizationHeaders = Map.ofEntries(
     Map.entry("authorization", "Bearer #{jwt}")
   );
 
@@ -29,11 +29,22 @@ public class DemostoreApiSimulation extends Simulation {
             .check(jsonPath("$.token").saveAs("jwt")));
   }
 
+  private static class Categories {
+    private static ChainBuilder list =
+            exec(http("List categories")
+                    .get("/api/category")
+                    .check(jsonPath("$[?(@.id == 6)].name").is("For Her")));
+
+    private static ChainBuilder update =
+            exec(http("Update category")
+                    .put("/api/category/7")
+                    .headers(authorizationHeaders)
+                    .body(StringBody("{\"name\": \"Everyone\"}"))
+                    .check(jsonPath("$.name").is("Everyone")));
+  }
+
   private ScenarioBuilder scn = scenario("DemostoreApiSimulation")
-    .exec(
-      http("List categories")
-        .get("/api/category")
-    )
+    .exec(Categories.list)
     .pause(86)
     .exec(
       http("List products")
@@ -61,12 +72,7 @@ public class DemostoreApiSimulation extends Simulation {
         .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/create-product.json"))
     )
     .pause(35)
-    .exec(
-      http("Update category")
-        .put("/api/category/7")
-        .headers(authorizationHeaders)
-        .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/update-category.json"))
-    );
+    .exec(Categories.update);
 
   {
 	  setUp(scn.injectOpen(atOnceUsers(1))).protocols(httpProtocol);
