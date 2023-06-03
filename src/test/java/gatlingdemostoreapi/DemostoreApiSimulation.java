@@ -43,34 +43,45 @@ public class DemostoreApiSimulation extends Simulation {
                     .check(jsonPath("$.name").is("Everyone")));
   }
 
+  private static class Products {
+    private static ChainBuilder list =
+            exec(http("List products")
+                    .get("/api/product?category=7")
+                    .check(jsonPath("$[?(@.categoryId != \"7\")]").notExists()));
+
+    private static ChainBuilder get =
+            exec(http("Get product")
+                    .get("/api/product/34")
+                    .check(jsonPath("$.id").ofInt().is(34)));
+
+    private static ChainBuilder update =
+            exec(http("Update product")
+                    .put("/api/product/34")
+                    .headers(authorizationHeaders)
+                    .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/update-product.json"))
+                    .check(jsonPath("$.price").is("19.99")));
+
+    private static ChainBuilder create =
+            repeat(3, "productCount").on(
+                    exec(http("Create product #{productCount}")
+                            .post("/api/product")
+                            .headers(authorizationHeaders)
+                            .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/create-product#{productCount}.json")))
+            );
+  }
+
   private ScenarioBuilder scn = scenario("DemostoreApiSimulation")
     .exec(Categories.list)
     .pause(86)
-    .exec(
-      http("List products")
-        .get("/api/product?category=7")
-    )
+    .exec(Products.list)
     .pause(31)
-    .exec(
-      http("Get product")
-        .get("/api/product/34")
-    )
+    .exec(Products.get)
     .pause(43)
     .exec(Authentication.authenticate)
     .pause(73)
-    .exec(
-      http("Update product")
-        .put("/api/product/34")
-        .headers(authorizationHeaders)
-        .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/update-product.json"))
-    )
+    .exec(Products.update)
     .pause(36)
-    .exec(
-      http("Create product")
-        .post("/api/product")
-        .headers(authorizationHeaders)
-        .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/create-product.json"))
-    )
+    .exec(Products.create)
     .pause(35)
     .exec(Categories.update);
 
