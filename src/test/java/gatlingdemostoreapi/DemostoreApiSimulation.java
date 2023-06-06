@@ -60,20 +60,36 @@ public class DemostoreApiSimulation extends Simulation {
     private static ChainBuilder list =
             exec(http("List products")
                     .get("/api/product?category=7")
-                    .check(jmesPath("[? categoryId != '7']").ofList().is(Collections.emptyList())));
+                    .check(jmesPath("[? categoryId != '7']").ofList().is(Collections.emptyList()))
+                    .check(jmesPath("[*].id").ofList().saveAs("allProductIds")));
 
     private static ChainBuilder get =
-            exec(http("Get product")
-                    .get("/api/product/34")
-                    .check(jmesPath("id").ofInt().is(34)));
+            exec(session -> {
+              List<Integer> allProductIds = session.getList("allProductIds");
+              return session.set("productId", allProductIds.get(new Random().nextInt(allProductIds.size())));
+            })
+                    .exec(http("Get product")
+                            .get("/api/product/#{productId}")
+                            .check(jmesPath("id").ofInt().isEL("#{productId}"))
+                            .check(jmesPath("@").ofMap().saveAs("product")));
 
     private static ChainBuilder update =
             exec(Authentication.authenticate)
-                    .exec(http("Update product")
-                    .put("/api/product/34")
-                    .headers(authorizationHeaders)
-                    .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/update-product.json"))
-                    .check(jmesPath("price").is("19.99")));
+                    .exec( session -> {
+                      Map<String, Object> product = session.getMap("product");
+                      return session
+                              .set("productCategoryId", product.get("categoryId"))
+                              .set("productName", product.get("name"))
+                              .set("productDescription", product.get("description"))
+                              .set("productImage", product.get("image"))
+                              .set("productPrice", product.get("price"))
+                              .set("productId", product.get("id"));
+                    })
+                    .exec(http("Update product #{productName}")
+                            .put("/api/product/#{productId}")
+                            .headers(authorizationHeaders)
+                            .body(ElFileBody("gatlingdemostoreapi/demostoreapisimulation/create-product.json"))
+                            .check(jmesPath("price").isEL("#{productPrice}")));
 
     private static ChainBuilder create =
             exec(Authentication.authenticate)
