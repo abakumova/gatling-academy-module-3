@@ -35,20 +35,28 @@ public class DemostoreApiSimulation extends Simulation {
   }
 
   private static class Categories {
+
+    private static FeederBuilder.Batchable<String> categoriesFeeder =
+            csv("data/categories.csv").random();
     private static ChainBuilder list =
             exec(http("List categories")
                     .get("/api/category")
                     .check(jmesPath("[? id == `6`].name").ofList().is(List.of("For Her"))));
 
     private static ChainBuilder update =
-            exec(http("Update category")
-                    .put("/api/category/7")
-                    .headers(authorizationHeaders)
-                    .body(StringBody("{\"name\": \"Everyone\"}"))
-                    .check(jmesPath("name").is("Everyone")));
+            feed(categoriesFeeder)
+                    .exec(Authentication.authenticate)
+                    .exec(http("Update category")
+                            .put("/api/category/#{categoryId}")
+                            .headers(authorizationHeaders)
+                            .body(StringBody("{\"name\": \"#{categoryName}\"}"))
+                            .check(jmesPath("name").isEL("#{categoryName}")));
   }
 
   private static class Products {
+
+    private static FeederBuilder.Batchable<String> productsFeeder =
+            csv("data/products.csv").circular();
     private static ChainBuilder list =
             exec(http("List products")
                     .get("/api/product?category=7")
@@ -60,35 +68,34 @@ public class DemostoreApiSimulation extends Simulation {
                     .check(jmesPath("id").ofInt().is(34)));
 
     private static ChainBuilder update =
-            exec(http("Update product")
+            exec(Authentication.authenticate)
+                    .exec(http("Update product")
                     .put("/api/product/34")
                     .headers(authorizationHeaders)
                     .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/update-product.json"))
                     .check(jmesPath("price").is("19.99")));
 
     private static ChainBuilder create =
-            repeat(3, "productCount").on(
-                    exec(http("Create product #{productCount}")
+            exec(Authentication.authenticate)
+                    .feed(productsFeeder)
+                    .exec(http("Create product #{productName}")
                             .post("/api/product")
                             .headers(authorizationHeaders)
-                            .body(RawFileBody("gatlingdemostoreapi/demostoreapisimulation/create-product#{productCount}.json")))
-            );
+                            .body(ElFileBody("gatlingdemostoreapi/demostoreapisimulation/create-product.json")));
   }
 
   private ScenarioBuilder scn = scenario("DemostoreApiSimulation")
     .exec(initSession)
     .exec(Categories.list)
-    .pause(86)
+    .pause(2)
     .exec(Products.list)
-    .pause(31)
+    .pause(2)
     .exec(Products.get)
-    .pause(43)
-    .exec(Authentication.authenticate)
-    .pause(73)
+    .pause(2)
     .exec(Products.update)
-    .pause(36)
-    .exec(Products.create)
-    .pause(35)
+    .pause(2)
+    .repeat(3).on(exec(Products.create))
+    .pause(2)
     .exec(Categories.update);
 
   {
